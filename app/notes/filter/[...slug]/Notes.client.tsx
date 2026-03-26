@@ -1,0 +1,80 @@
+"use client";
+
+import { useState } from "react";
+import { fetchNotes } from "@/lib/api";
+import css from "./NotesPage.module.css";
+import NoteList from "@/components/NoteList/NoteList";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import Pagination from "@/components/Pagination/Pagination";
+import Modal from "@/components/Modal/Modal";
+import SearchBox from "@/components/SearchBox/SearchBox";
+import { useDebouncedCallback } from "use-debounce";
+import NoteForm from "@/components/NoteForm/NoteForm";
+import { NoteTag } from "@/types/note";
+import ErrorMessage from "@/components/ErrorMessage/ErrorMessage";
+
+type Props = {
+  tag: NoteTag | undefined;
+};
+
+function NotesClient({ tag }: Props) {
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [modalIsOpen, setModalIsOpen] = useState<boolean>(false);
+  const [query, setQuery] = useState<string>("");
+
+  const { data, isLoading, isFetched } = useQuery({
+    queryKey: ["notes", currentPage, query, tag],
+    queryFn: () => fetchNotes(query, currentPage, tag),
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+  });
+
+  const handleQueryChange = useDebouncedCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setQuery(event.target.value);
+      setCurrentPage(1);
+    },
+    500,
+  );
+
+  const onClose = () => {
+    setModalIsOpen(false);
+  };
+
+  const openModal = () => {
+    setModalIsOpen(true);
+  };
+
+  const totalPages = data?.totalPages ?? 1;
+  const notes = data?.notes ?? [];
+  const hasNotes = notes.length > 0;
+  const showEmptyState = isFetched && notes.length === 0;
+
+  return (
+    <div className={css.app}>
+      <header className={css.toolbar}>
+        <SearchBox handleSearch={handleQueryChange} />
+        {totalPages > 1 && (
+          <Pagination
+            totalPages={totalPages}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+          />
+        )}
+        <button className={css.button} onClick={openModal}>
+          Create note +
+        </button>
+      </header>
+      {modalIsOpen && (
+        <Modal onClose={onClose}>
+          <NoteForm onClose={onClose} />
+        </Modal>
+      )}
+      {isLoading && <p>Loading, please wait...</p>}
+      {showEmptyState && <ErrorMessage />}
+      {hasNotes && <NoteList notes={notes} />}
+    </div>
+  );
+}
+
+export default NotesClient;
