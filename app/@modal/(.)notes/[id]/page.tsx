@@ -7,11 +7,11 @@ import {
 import NotePreviewClient from "../NotePreview.client";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function NotePreviewModalPage({ params }: Props) {
-  const { id } = params;
+  const { id } = await params;
   const queryClient = new QueryClient();
 
   await queryClient.prefetchQuery({
